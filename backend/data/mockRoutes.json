@@ -1,0 +1,28 @@
+[
+  {
+    "id": "r1",
+    "mode": "Bus",
+    "origin": "Koramangala",
+    "destination": "Indiranagar",
+    "durationMinutes": 35,
+    "costINR": 30
+  },
+  {
+    "id": "r2",
+    "mode": "Auto",
+    "origin": "Koramangala",
+    "destination": "Indiranagar",
+    "durationMinutes": 25,
+    "costINR": 180
+  },
+  {
+    "id": "r3",
+    "mode": "Cab",
+    "origin": "Koramangala",
+    "destination": "Indiranagar",
+    "durationMinutes": 22,
+    "costINR": 300
+  }
+]
+
+
