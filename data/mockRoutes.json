@@ -1,0 +1,98 @@
+[
+  {
+    "id": "route_001",
+    "from": "KPR College",
+    "to": "Gandhipuram",
+    "mode": "Bus",
+    "cost": 15,
+    "timeMin": 35,
+    "comfort": "basic",
+    "distance": 12.5,
+    "provider": "TNSTC",
+    "availability": "available",
+    "route": {
+      "waypoints": ["Peelamedu", "Singanallur", "Town Hall"],
+      "traffic": "moderate"
+    }
+  },
+  {
+    "id": "route_002",
+    "from": "KPR College",
+    "to": "Gandhipuram",
+    "mode": "Auto",
+    "cost": 120,
+    "timeMin": 25,
+    "comfort": "standard",
+    "distance": 12.5,
+    "provider": "Local Auto",
+    "availability": "available",
+    "route": {
+      "waypoints": ["Peelamedu", "Race Course"],
+      "traffic": "light"
+    }
+  },
+  {
+    "id": "route_003",
+    "from": "Gandhipuram",
+    "to": "Coimbatore Airport",
+    "mode": "Cab",
+    "cost": 280,
+    "timeMin": 30,
+    "comfort": "premium",
+    "distance": 18.2,
+    "provider": "Ola/Uber",
+    "availability": "available",
+    "route": {
+      "waypoints": ["Avinashi Road", "Neelambur"],
+      "traffic": "light"
+    }
+  },
+  {
+    "id": "route_004",
+    "from": "KPR College",
+    "to": "Coimbatore Airport",
+    "mode": "Bus",
+    "cost": 25,
+    "timeMin": 55,
+    "comfort": "basic",
+    "distance": 22.8,
+    "provider": "TNSTC",
+    "availability": "limited",
+    "route": {
+      "waypoints": ["Peelamedu", "Gandhipuram", "Avinashi Road"],
+      "traffic": "moderate"
+    }
+  },
+  {
+    "id": "route_005",
+    "from": "Coimbatore Airport",
+    "to": "KPR College",
+    "mode": "Cab",
+    "cost": 350,
+    "timeMin": 35,
+    "comfort": "premium",
+    "distance": 22.8,
+    "provider": "Airport Taxi",
+    "availability": "available",
+    "route": {
+      "waypoints": ["Neelambur", "Peelamedu"],
+      "traffic": "light"
+    }
+  },
+  {
+    "id": "route_006",
+    "from": "Gandhipuram",
+    "to": "KPR College",
+    "mode": "Auto",
+    "cost": 110,
+    "timeMin": 28,
+    "comfort": "standard",
+    "distance": 12.5,
+    "provider": "Local Auto",
+    "availability": "available",
+    "route": {
+      "waypoints": ["Race Course", "Peelamedu"],
+      "traffic": "moderate"
+    }
+  }
+]
