@@ -1,16 +1,12 @@
 // Core data types for MobilityX backend
 
 export interface ParsedQuery {
-  from: string;
-  to: string;
-  preferences?: {
-    maxCost?: number;
-    maxTime?: number;
-    preferredModes?: TransportMode[];
-    comfortLevel?: ComfortLevel;
-  };
+  source: string | null;
+  destination: string | null;
+  intent: 'cheapest' | 'fastest' | 'comfortable' | 'unknown';
   timestamp: string;
 }
+
 
 export interface RouteOption {
   id: string;

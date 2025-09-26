@@ -1,46 +1,48 @@
 import { Request, Response } from 'express';
-import { QueryRequest, ParsedQuery, ApiResponse } from '../types/index.js';
+import { ParsedQuery, ApiResponse } from '../types/index.js';
 import { createChatCompletion, isOpenAIAvailable } from '../utils/openaiClient.js';
+
+interface QueryRequest {
+  message: string;
+}
 
 /**
  * Parse natural language query into structured format
- * TODO: Implement OpenAI-based query parsing logic
+ * Uses OpenAI if available, falls back to local regex parsing
  */
 export async function parseQuery(req: Request, res: Response): Promise<void> {
   try {
-    const { query, context }: QueryRequest = req.body;
+    const { message }: QueryRequest = req.body;
 
-    if (!query || typeof query !== 'string') {
+    // Validate input
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
       res.status(400).json({
         success: false,
-        error: 'Query is required and must be a string',
+        error: 'Message is required and must be a non-empty string',
         timestamp: new Date().toISOString()
       } as ApiResponse);
       return;
     }
 
-    // TODO: Implement actual query parsing logic using OpenAI
-    // For now, return a mock parsed query
-    const mockParsedQuery: ParsedQuery = {
-      from: 'KPR College', // Extract from query
-      to: 'Gandhipuram',   // Extract from query
-      preferences: {
-        maxCost: 200,
-        maxTime: 60,
-        preferredModes: ['Bus', 'Auto'],
-        comfortLevel: 'standard'
-      },
-      timestamp: new Date().toISOString()
-    };
+    let parsedQuery: ParsedQuery;
 
-    // Check if OpenAI is available for future implementation
-    if (!isOpenAIAvailable()) {
-      console.warn('OpenAI not available, using mock data');
+    // Try OpenAI parsing first if available
+    if (isOpenAIAvailable()) {
+      console.log('🤖 Using OpenAI for query parsing');
+      try {
+        parsedQuery = await parseWithOpenAI(message);
+      } catch (error) {
+        console.warn('⚠️ OpenAI parsing failed, falling back to local parser:', error);
+        parsedQuery = parseWithLocalParser(message);
+      }
+    } else {
+      console.log('🔧 Using local parser (OpenAI not available)');
+      parsedQuery = parseWithLocalParser(message);
     }
 
     const response: ApiResponse<ParsedQuery> = {
       success: true,
-      data: mockParsedQuery,
+      data: parsedQuery,
       timestamp: new Date().toISOString()
     };
 
@@ -57,20 +59,147 @@ export async function parseQuery(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * Helper function to extract locations from query using OpenAI
- * TODO: Implement this function
+ * Parse query using OpenAI chat completion
+ * Extracts source, destination, and intent from natural language
  */
-async function extractLocationsFromQuery(query: string): Promise<{ from: string; to: string } | null> {
-  // TODO: Use OpenAI to extract from/to locations from natural language
-  // Example: "I want to go from KPR College to Gandhipuram" -> { from: "KPR College", to: "Gandhipuram" }
-  return null;
+async function parseWithOpenAI(message: string): Promise<ParsedQuery> {
+  const systemPrompt = `You are a travel query parser. Extract source, destination, and intent from user messages.
+
+Return ONLY a JSON object with this exact structure:
+{
+  "source": "extracted source location or null",
+  "destination": "extracted destination location or null", 
+  "intent": "cheapest|fastest|comfortable|unknown"
+}
+
+Intent detection rules:
+- "cheapest": keywords like cheap, budget, affordable, low cost, save money
+- "fastest": keywords like fast, quick, urgent, hurry, time
+- "comfortable": keywords like comfort, comfortable, luxury, premium, relaxed
+- "unknown": if no clear intent is detected
+
+Examples:
+- "I want to go from KPR College to Gandhipuram cheaply" → {"source": "KPR College", "destination": "Gandhipuram", "intent": "cheapest"}
+- "Fast route to airport from my location" → {"source": null, "destination": "airport", "intent": "fastest"}
+- "Comfortable ride to Brookefields Mall" → {"source": null, "destination": "Brookefields Mall", "intent": "comfortable"}`;
+
+  const completion = await createChatCompletion([
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: message }
+  ], {
+    model: 'gpt-3.5-turbo',
+    temperature: 0.1,
+    maxTokens: 200
+  });
+
+  if (!completion?.choices?.[0]?.message?.content) {
+    throw new Error('No response from OpenAI');
+  }
+
+  try {
+    const parsed = JSON.parse(completion.choices[0].message.content);
+    
+    // Validate the response structure
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new Error('Invalid response format');
+    }
+
+    // Ensure intent is valid
+    const validIntents = ['cheapest', 'fastest', 'comfortable', 'unknown'];
+    if (!validIntents.includes(parsed.intent)) {
+      parsed.intent = 'unknown';
+    }
+
+    return {
+      source: parsed.source || null,
+      destination: parsed.destination || null,
+      intent: parsed.intent,
+      timestamp: new Date().toISOString()
+    };
+  } catch (parseError) {
+    console.error('Failed to parse OpenAI response:', parseError);
+    throw new Error('Invalid JSON response from OpenAI');
+  }
 }
 
 /**
- * Helper function to extract preferences from query
- * TODO: Implement this function
+ * Local regex-based parser as fallback
+ * Extracts source, destination, and intent using pattern matching
  */
-async function extractPreferencesFromQuery(query: string): Promise<ParsedQuery['preferences']> {
-  // TODO: Use OpenAI to extract preferences like budget, time constraints, comfort level
-  return undefined;
+function parseWithLocalParser(message: string): ParsedQuery {
+  const lowerMessage = message.toLowerCase();
+  
+  // Extract source location
+  let source: string | null = null;
+  const fromPatterns = [
+    /from\s+([^to]+?)(?:\s+to|\s*$)/i,
+    /starting\s+(?:from\s+)?([^to]+?)(?:\s+to|\s*$)/i,
+    /leaving\s+(?:from\s+)?([^to]+?)(?:\s+to|\s*$)/i
+  ];
+  
+  for (const pattern of fromPatterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      source = match[1].trim();
+      break;
+    }
+  }
+
+  // Extract destination location
+  let destination: string | null = null;
+  const toPatterns = [
+    /to\s+([^from]+?)(?:\s+from|\s*$)/i,
+    /going\s+to\s+([^from]+?)(?:\s+from|\s*$)/i,
+    /heading\s+to\s+([^from]+?)(?:\s+from|\s*$)/i,
+    /destination\s+([^from]+?)(?:\s+from|\s*$)/i
+  ];
+  
+  for (const pattern of toPatterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      destination = match[1].trim();
+      break;
+    }
+  }
+
+  // If no "from/to" pattern found, try to extract any location mentions
+  if (!source && !destination) {
+    const locationKeywords = ['college', 'airport', 'mall', 'hospital', 'station', 'gandhipuram', 'kpr'];
+    const words = message.split(/\s+/);
+    
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i].toLowerCase();
+      if (locationKeywords.some(keyword => word.includes(keyword))) {
+        // Take this word and potentially the next few words as a location
+        const location = words.slice(i, Math.min(i + 3, words.length)).join(' ');
+        if (!destination) {
+          destination = location;
+        } else if (!source) {
+          source = location;
+        }
+      }
+    }
+  }
+
+  // Detect intent from keywords
+  let intent: ParsedQuery['intent'] = 'unknown';
+  
+  const cheapKeywords = ['cheap', 'budget', 'affordable', 'low cost', 'save money', 'economical', 'inexpensive'];
+  const fastKeywords = ['fast', 'quick', 'urgent', 'hurry', 'time', 'speed', 'rapid', 'express'];
+  const comfortKeywords = ['comfort', 'comfortable', 'luxury', 'premium', 'relaxed', 'cozy', 'pleasant'];
+  
+  if (cheapKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    intent = 'cheapest';
+  } else if (fastKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    intent = 'fastest';
+  } else if (comfortKeywords.some(keyword => lowerMessage.includes(keyword))) {
+    intent = 'comfortable';
+  }
+
+  return {
+    source,
+    destination,
+    intent,
+    timestamp: new Date().toISOString()
+  };
 }

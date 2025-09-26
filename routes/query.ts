@@ -7,7 +7,7 @@ const router = express.Router();
  * POST /query
  * Parse natural language query into structured format
  * 
- * Body: { query: string, context?: object }
+ * Body: { message: string }
  * Response: { success: boolean, data: ParsedQuery, timestamp: string }
  */
 router.post('/', parseQuery);
