@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { RecommendRequest, RouteOption, ApiResponse } from '../types/index.js';
-import mockRoutes from '../data/mockRoutes.json' assert { type: 'json' };
+import mockRoutes from '../data/mockRoutes.json\' assert { type: 'json' };
 
 /**
  * Get route recommendations based on parsed query
